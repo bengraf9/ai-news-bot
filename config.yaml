@@ -1,120 +1,82 @@
-# LLM Configuration - Choose your AI model provider
+# Personal News Digest — Daily Configuration
+# Selects 3 personally relevant stories each morning
+
 llm:
-  # Provider: 'claude', 'deepseek', 'gemini', 'grok', 'openai'
-  # Claude (Anthropic): Excellent quality, higher cost
-  # DeepSeek: Good quality, much lower cost, better Chinese support
-  # Gemini: Fast, multimodal, free tier available
-  # Grok: Advanced reasoning, real-time data
-  # OpenAI: Industry standard, latest models
   provider: claude
 
-  # Optional: Specify a model (if not set, uses provider's default)
-  # Claude models: claude-sonnet-4-5-20250929, claude-3-5-sonnet-20241022
-  # DeepSeek models: deepseek-chat, deepseek-reasoner
-  # model: claude-sonnet-4-5-20250929
-
 news:
-  # Enable web search tool (uses DuckDuckGo API via LLM tool calling)
-  # Note: DuckDuckGo API often returns limited results. RSS feeds are more reliable.
-  # Default: false (recommended to keep disabled)
   enable_web_search: false
-
-  # Maximum news items to fetch per source (fetch more for AI to select from)
   max_items_per_source: 10
 
-  # Stage 1: Selection prompt template
-  # Placeholders: {total_items}, {formatted_news}
+  # Stage 1: Select exactly 3 personally relevant stories
   stage1_prompt_template: |
       {formatted_news}
 
-      ## YOUR TASK - STAGE 1: NEWS SELECTION
+      ## YOUR TASK — SELECT EXACTLY 3 STORIES
 
-      You are a senior AI industry analyst. Analyze the {total_items} news items above and select exactly 15-20 of the highest-quality items.
+      You are my personal news curator. From the {total_items} news items above,
+      select exactly 3 that are most relevant to MY specific interests.
 
-      ### SELECTION CRITERIA:
-      - ✅ Groundbreaking research or technical breakthroughs
-      - ✅ Major product launches or significant updates
-      - ✅ Important policy changes or regulations
-      - ✅ Large funding rounds or M&A activities
-      - ✅ Balanced coverage across categories (LLM, Agents, Research, Products, etc.)
-      - ✅ Include both international and domestic news when available
-      - ✅ Prefer primary sources over secondary reporting
+      MY INTEREST PROFILE (in rough priority order):
 
-      ### OUTPUT FORMAT:
-      Return ONLY a JSON array of selected news IDs. No explanations, no markdown, just the JSON array.
+      1. TEXAS LONGHORNS: Any Longhorn news is high priority. Football focus,
+         but notable news from other sports welcome. Include recruiting, coaching
+         changes, game results, transfers, schedule/rankings.
+         From Burnt Orange Nation: strongly prefer concrete news (game results,
+         scores, signings, roster moves, coaching changes, recruiting commitments).
+         Skip analysis, opinion, gamethreads, previews, and roundup posts unless
+         they contain a genuinely significant development.
 
-      Example format:
-      ["INT-1", "INT-5", "DOM-2", "INT-12", ...]
+      2. APPLE ECOSYSTEM & AI: Major Apple product launches, software updates,
+         ecosystem changes. Significant AI developments — capability jumps, major
+         model releases, industry shifts, open source milestones.
+         (Skip: minor app updates, funding rounds, AI hype without substance)
 
-      CRITICAL: Select exactly 15-20 items. No more, no less.
+      3. SCIENCE & SPACE: Breakthroughs, discoveries, mission milestones.
+         (Skip: routine ISS ops, incremental studies, health/diet news)
 
-  # Stage 2: Summarization prompt template (complete prompt for creating the digest)
-  # Placeholders: {count}, {selected_news}
+      4. SAN ANTONIO SPURS: Game results, trades, draft news, major injuries,
+         coaching changes.
+
+      5. US SOCCER (USMNT & USWNT): Match results, World Cup updates, roster news.
+
+      6. COLLEGE FOOTBALL (general): Playoff/rankings, conference realignment,
+         rule changes, coaching carousel, transfer portal shakeups.
+
+      7. BOARD GAMES: Notable new releases, major awards (Spiel des Jahres,
+         Kennerspiel, Deutscher Spiele Preis, Golden Geek), convention news
+         (Gen Con, Essen Spiel, SHUX). Particular interest in eurogames /
+         strategy games, but not exclusively.
+
+      8. RICE OWLS: Only if genuinely big — coaching change, stunning upset.
+
+      9. BIG SPORTS STORIES: Record-breaking, historic, or culturally significant.
+
+      EXCLUDE: Celebrity news, crime, political horse-race coverage, daily
+      political bickering, opinion masquerading as news, outrage bait.
+
+      RULES:
+      - Exactly 3 stories. No more, no less.
+      - All 3 can come from the same category if warranted.
+      - Prefer surprising stories I wouldn't encounter casually.
+
+      Return ONLY a JSON array of selected news IDs:
+      ["INT-1", "INT-5", "INT-12"]
+
+  # Stage 2: Summarize the 3 selected stories concisely
   stage2_prompt_template: |
-      You are a senior AI industry analyst. Create a comprehensive, in-depth news digest for the {count} pre-selected news items below.
+      Create a concise news digest for these {count} pre-selected stories.
 
       {selected_news}
 
-      ## OUTPUT STRUCTURE:
+      For each story, provide:
+      1. **Bold headline** (your own wording, not the article's)
+      2. **2-3 sentence summary**: what happened, why it matters, key context
+      3. **Source**: [Source Name](URL)
 
-      Organize news items into relevant categories (use only categories that have news):
-      1. **Large Language Models & Foundation Models** - LLM updates, new model releases, benchmarks
-      2. **AI Agents & Autonomous Systems** - Agent frameworks, autonomous AI developments
-      3. **Multimodal AI** - Vision, audio, video AI capabilities
-      4. **Research & Academic Breakthroughs** - Papers, scientific discoveries, new methods
-      5. **Product Launches & Updates** - New products, feature releases, API updates
-      6. **AI Infrastructure & Hardware** - Chips, GPUs, training infrastructure, cloud services
-      7. **Healthcare & Biomedical AI** - Medical AI, drug discovery, diagnostics
-      8. **Robotics & Autonomous Vehicles** - Robots, self-driving, embodied AI
-      9. **Enterprise & Industry Applications** - B2B solutions, industry-specific AI
-      10. **Funding & Market Dynamics** - Investments, acquisitions, valuations
-      11. **Policy & Regulation** - Government policies, AI governance, ethics
-      12. **Open Source & Community** - Open source projects, community developments
-
-      ## CONTENT REQUIREMENTS:
-
-      For each news item, provide:
-      1. **Clear Headline**: Informative title that captures the key development
-      2. **Analytical Summary (4-6 sentences)**:
-         - What happened (core news and context)
-         - Technical details, key specifications, or metrics
-         - Why it matters (industry significance and impact)
-         - Potential implications (future developments, competitive landscape)
-      3. **Source Attribution**: Always include as clickable markdown link: [Source Name](URL)
-
-      ## WRITING STYLE:
-      - Professional, analytical tone suitable for industry professionals
-      - Include specific numbers, metrics, and data points when available
-      - Keep technical terminology accurate (preserve technical jargon)
-      - Balance accessibility with technical depth
-      - Provide context and analysis, not just reporting facts
-
-      ## EXAMPLE FORMAT:
-
-      ## Large Language Models & Foundation Models
-
-      ### OpenAI Releases GPT-5 with Revolutionary Capabilities
-
-      OpenAI has announced GPT-5, featuring a 10 trillion parameter architecture with unprecedented reasoning abilities. The model demonstrates 40% improvement on complex reasoning benchmarks and introduces native multimodal understanding. This release marks a significant leap in AI capability, potentially reshaping competitive dynamics in the LLM market. Enterprise customers report 3x productivity gains in early testing, suggesting immediate practical applications.
-
-      Source: [OpenAI Blog](https://openai.com/blog/gpt-5)
-
-      ---
-
-      ## QUALITY REQUIREMENTS:
-      - ✅ Summarize ALL {count} items provided above (no skipping)
-      - ✅ Each summary must be exactly 4-6 sentences
-      - ✅ Include specific numbers, metrics, and data when available
-      - ✅ Maintain balanced coverage across different categories
-      - ✅ Include both international and domestic news
-      - ✅ Prioritize accuracy over speculation
-      - ✅ All sources must have clickable markdown links
-
-      ## AVOID:
-      ❌ Generic statements without specifics
-      ❌ Summaries shorter than 4 sentences or longer than 6 sentences
-      ❌ Missing clickable links or improper markdown formatting
-      ❌ Skipping any news items
+      Style: conversational but informative, like a knowledgeable friend.
+      Include specific numbers/scores/data when available.
+      Total email under 300 words. No preamble, no sign-off, no category headers.
 
 logging:
   level: INFO

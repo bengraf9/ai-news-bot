@@ -1,0 +1,92 @@
+name: Weekly News Synthesis
+
+on:
+  # Sunday at 8:00 AM Central (13:00 UTC during CDT)
+  schedule:
+    - cron: "0 13 * * 0"
+  # Manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  # ============================================================
+  # Claude Haiku 4.5 — Weekly Synthesis
+  # ============================================================
+  weekly-claude:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate and send weekly synthesis (Claude)
+        env:
+          LLM_PROVIDER: claude
+          LLM_MODEL: claude-haiku-4-5-20251001
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTIFICATION_METHODS: email
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_SUBJECT: "The Hour Hand [Claude]"
+          CONFIG_PATH: config-weekly.yaml
+        run: python main.py
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-claude-error-logs
+          path: "*.log"
+          retention-days: 7
+
+  # ============================================================
+  # Gemini 2.5 Flash — Weekly Synthesis
+  # Remove this job after testing if Claude wins (or vice versa)
+  # ============================================================
+  weekly-gemini:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate and send weekly synthesis (Gemini)
+        env:
+          LLM_PROVIDER: gemini
+          LLM_MODEL: gemini-2.5-flash
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          NOTIFICATION_METHODS: email
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_SUBJECT: "The Hour Hand [Gemini]"
+          CONFIG_PATH: config-weekly.yaml
+        run: python main.py
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-gemini-error-logs
+          path: "*.log"
+          retention-days: 7

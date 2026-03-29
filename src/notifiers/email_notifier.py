@@ -64,8 +64,10 @@ class EmailNotifier:
         # Create default subject if not provided
         if subject is None:
             today = datetime.now().strftime("%Y-%m-%d")
+            # Allow custom subject prefix via environment variable
+            subject_prefix = os.getenv("EMAIL_SUBJECT", "News Digest")
             lang_suffix = f" [{language.upper()}]" if language != "en" else ""
-            subject = f"AI News Digest - {today}{lang_suffix}"
+            subject = f"{subject_prefix} - {today}{lang_suffix}"
 
         if not all([self.gmail_address, self.gmail_app_password, self.email_to]):
             logger.error("Gmail notifier is not fully configured. Skipping email send.")

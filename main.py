@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-AI News Bot - Main Application
+Personal News Digest
 
-Generates and distributes daily AI news digests using Anthropic's Claude API.
+Generates and distributes personalized news digests via email.
+Supports daily (3 stories) and weekly (big-picture synthesis) modes
+via different config files.
 """
+import os
 import sys
 from datetime import datetime
 from src.config import Config
@@ -21,8 +24,9 @@ from src.notifiers import (
 def main():
     """Main application entry point"""
     try:
-        # Load configuration
-        config = Config()
+        # Load configuration (CONFIG_PATH env var selects daily vs weekly config)
+        config_path = os.getenv("CONFIG_PATH")
+        config = Config(config_path=config_path)
 
         # Setup logger with config
         logger = setup_logger(

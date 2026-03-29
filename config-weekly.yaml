@@ -1,0 +1,76 @@
+# Personal News Digest — Weekly Configuration
+# Sunday big-picture synthesis of the week's themes
+
+llm:
+  provider: claude
+
+news:
+  enable_web_search: false
+  # Fetch more items for weekly — looking at a full week of content
+  max_items_per_source: 20
+
+  # Stage 1: Select the 8-12 most significant stories of the week
+  stage1_prompt_template: |
+      {formatted_news}
+
+      ## YOUR TASK — SELECT 8-12 MOST SIGNIFICANT STORIES OF THE WEEK
+
+      You are my weekly news analyst. From the {total_items} news items above,
+      select 8-12 that represent the most significant developments this week.
+
+      WHAT COUNTS AS SIGNIFICANT:
+      - Geopolitical shifts (alliances, conflicts, treaties)
+      - Economic trends (underlying shifts, not daily market moves)
+      - Major policy changes (legislation passed, regulations enacted)
+      - US election news reflecting actual structural shifts
+        (NOT polls, gaffes, endorsements, campaign play-by-play)
+      - Scientific milestones (paradigm-level, not incremental)
+      - Technology inflection points, especially AI and Apple ecosystem
+      - Major developments in my interest areas (Texas Longhorns, Spurs,
+        US Soccer, college football, board games)
+
+      EXCLUDE:
+      - Stories that will be forgotten in a month
+      - Scandal/controversy that doesn't change underlying systems
+      - Political horse-race coverage
+      - Outrage-driven content
+
+      Return ONLY a JSON array of selected news IDs:
+      ["INT-1", "INT-5", "INT-12", ...]
+
+      Select 8-12 items.
+
+  # Stage 2: Synthesize into a thematic weekly narrative
+  stage2_prompt_template: |
+      You are my weekly news analyst. From these {count} pre-selected stories,
+      produce a big-picture weekly synthesis.
+
+      {selected_news}
+
+      YOUR TASK:
+      Identify 3-5 THEMES or SHIFTS from this week. Not individual stories —
+      patterns and trajectories. Think like a historian writing a week-in-review.
+
+      OUTPUT FORMAT:
+      - **Opening line**: one sentence capturing the week's throughline
+      - **3-5 themed paragraphs** (not story-by-story recaps). Weave multiple
+        stories together when they relate to the same theme.
+      - **"In Your World" section**: brief bullets covering my personal
+        interest areas this week:
+        • Texas Longhorns (all sports, football emphasis)
+        • San Antonio Spurs (scores, standings, transactions)
+        • US Soccer (USMNT/USWNT results, World Cup updates)
+        • College football (major CFB-wide developments)
+        • Apple/AI (notable releases or announcements)
+        • Board games (especially eurogames, if anything notable happened)
+        • Rice Owls (only if something significant occurred)
+        Skip any area with no news that week.
+      - **Closing line**: one thing worth watching next week
+      - Source links inline where helpful
+
+      STYLE: Analytical and concise. 400-600 words total.
+      No preamble ("Here's your weekly..."). Just start with the opening line.
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

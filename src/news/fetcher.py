@@ -19,7 +19,7 @@ class NewsFetcher:
         # Personalized RSS feed sources
         self.rss_feeds = {
             # --- Big Picture / World News ---
-            "AP Top News": "https://openrss.org/apnews.com",
+            "AP Top News": "https://rsshub.app/apnews/topics/ap-top-news",
             "NPR News": "https://feeds.npr.org/1001/rss.xml",
             "BBC World News": "https://feeds.bbci.co.uk/news/world/rss.xml",
 

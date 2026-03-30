@@ -19,7 +19,7 @@ class NewsFetcher:
         # Personalized RSS feed sources
         self.rss_feeds = {
             # --- Big Picture / World News ---
-            "AP Top News": "https://apnews.com/hub/ap-top-news.rss",
+            "AP Top News": "https://openrss.org/apnews.com",
             "NPR News": "https://feeds.npr.org/1001/rss.xml",
             "BBC World News": "https://feeds.bbci.co.uk/news/world/rss.xml",
 
@@ -98,14 +98,42 @@ class NewsFetcher:
             root = ET.fromstring(response.content)
 
             items = []
-            # Handle both RSS 2.0 and Atom formats
+            # Handle RSS 2.0, RDF (RSS 1.0), and Atom formats
             if root.tag == 'rss':
+                # RSS 2.0 format
                 news_items = root.findall('.//item')[:max_items]
                 for item in news_items:
                     title = item.find('title')
                     link = item.find('link')
                     description = item.find('description')
                     pub_date = item.find('pubDate')
+
+                    items.append({
+                        'title': title.text if title is not None else '',
+                        'link': link.text if link is not None else '',
+                        'description': self._clean_html(description.text if description is not None else ''),
+                        'published': pub_date.text if pub_date is not None else '',
+                    })
+            elif root.tag.endswith('}RDF') or 'rdf' in root.tag.lower():
+                # RDF / RSS 1.0 format (used by Nature, etc.)
+                # Items use the RSS 1.0 namespace
+                rss1_ns = {'rss1': 'http://purl.org/rss/1.0/',
+                           'dc': 'http://purl.org/dc/elements/1.1/'}
+                rdf_items = root.findall('.//rss1:item', rss1_ns)[:max_items]
+                # Fallback: try without namespace (some RDF feeds)
+                if not rdf_items:
+                    rdf_items = root.findall('.//item')[:max_items]
+                for item in rdf_items:
+                    title = item.find('rss1:title', rss1_ns)
+                    if title is None:
+                        title = item.find('title')
+                    link = item.find('rss1:link', rss1_ns)
+                    if link is None:
+                        link = item.find('link')
+                    description = item.find('rss1:description', rss1_ns)
+                    if description is None:
+                        description = item.find('description')
+                    pub_date = item.find('dc:date', rss1_ns)
 
                     items.append({
                         'title': title.text if title is not None else '',
@@ -121,7 +149,11 @@ class NewsFetcher:
                     title = entry.find('atom:title', namespace)
                     link = entry.find('atom:link', namespace)
                     summary = entry.find('atom:summary', namespace)
+                    if summary is None:
+                        summary = entry.find('atom:content', namespace)
                     updated = entry.find('atom:updated', namespace)
+                    if updated is None:
+                        updated = entry.find('atom:published', namespace)
 
                     items.append({
                         'title': title.text if title is not None else '',

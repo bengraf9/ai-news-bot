@@ -11,65 +11,118 @@ news:
 
   # Stage 1: Select the 8-12 most significant stories of the week
   stage1_prompt_template: |
-      {formatted_news}
+    {formatted_news}
 
-      ## YOUR TASK — SELECT 8-12 MOST SIGNIFICANT STORIES OF THE WEEK
+    ## YOUR TASK — SELECT 8-12 MOST SIGNIFICANT STORIES OF THE WEEK
 
-      You are my weekly news analyst. From the {total_items} news items above,
-      select 8-12 that represent the most significant developments this week.
+    You are my weekly news analyst. From the {total_items} news items above,
+    select 8-12 that represent the most significant developments this week.
 
-      WHAT COUNTS AS SIGNIFICANT:
-      - Geopolitical shifts (alliances, conflicts, treaties)
-      - Economic trends (underlying shifts, not daily market moves)
-      - Major policy changes (legislation passed, regulations enacted)
-      - US election news reflecting actual structural shifts
-        (NOT polls, gaffes, endorsements, campaign play-by-play)
-      - Scientific milestones (paradigm-level, not incremental)
-      - Technology inflection points, especially AI and Apple ecosystem
-      - Major developments in my interest areas (Texas Longhorns, Spurs,
-        US Soccer, college football, board games)
+    WHAT COUNTS AS SIGNIFICANT:
+    - Geopolitical shifts (alliances, conflicts, treaties)
+    - Economic trends (underlying shifts, not daily market moves)
+    - Major policy changes (legislation passed, regulations enacted)
+    - US election news reflecting actual structural shifts
+      (NOT polls, gaffes, endorsements, campaign play-by-play)
+    - Scientific milestones (paradigm-level, not incremental)
+    - Technology inflection points, especially AI and Apple ecosystem
+    - Major developments in my interest areas (Texas Longhorns, Spurs,
+      US Soccer, college football, board games)
+    - Hurricane/tropical weather: Only if a named storm formed with a
+      track potentially affecting the Gulf of Mexico or Texas coast
 
-      EXCLUDE:
-      - Stories that will be forgotten in a month
-      - Scandal/controversy that doesn't change underlying systems
-      - Political horse-race coverage
-      - Outrage-driven content
+    ESPN TOP NEWS SPORT PRIORITIES (when ESPN stories are candidates):
+    - HIGH interest: College football, NFL, NBA, college baseball, Olympics
+    - MEDIUM interest: College softball, World Cup soccer, professional golf
+    - LOW interest: MLB, NHL, WNBA, other college sports, non-World Cup soccer
+    - NO interest: Auto racing, fighting sports (UFC, boxing)
 
-      Return ONLY a JSON array of selected news IDs:
-      ["INT-1", "INT-5", "INT-12", ...]
+    EXCLUDE:
+    - Stories that will be forgotten in a month
+    - Scandal/controversy that doesn't change underlying systems
+    - Political horse-race coverage
+    - Outrage-driven content
 
-      Select 8-12 items.
+    For Hacker News items: evaluate the underlying news, not the HN discussion.
+    Ignore upvote counts, comment counts, and community reaction metadata.
+
+    Return ONLY a JSON array of selected news IDs:
+    ["INT-1", "INT-5", "INT-12", ...]
+
+    Select 8-12 items.
 
   # Stage 2: Synthesize into a thematic weekly narrative
   stage2_prompt_template: |
-      You are my weekly news analyst. From these {count} pre-selected stories,
-      produce a big-picture weekly synthesis.
+    You are my weekly news analyst. From these {count} pre-selected stories,
+    produce a big-picture weekly synthesis.
 
-      {selected_news}
+    {selected_news}
 
-      YOUR TASK:
-      Identify 3-5 THEMES or SHIFTS from this week. Not individual stories —
-      patterns and trajectories. Think like a historian writing a week-in-review.
+    YOUR TASK:
+    Identify 4-7 THEMES or SHIFTS from this week. Not individual stories —
+    patterns and trajectories. Think like a historian writing a week-in-review.
 
-      OUTPUT FORMAT:
-      - **Opening line**: one sentence capturing the week's throughline
-      - **3-5 themed paragraphs** (not story-by-story recaps). Weave multiple
-        stories together when they relate to the same theme.
-      - **"In Your World" section**: brief bullets covering my personal
-        interest areas this week:
-        • Texas Longhorns (all sports, football emphasis)
-        • San Antonio Spurs (scores, standings, transactions)
-        • US Soccer (USMNT/USWNT results, World Cup updates)
-        • College football (major CFB-wide developments)
-        • Apple/AI (notable releases or announcements)
-        • Board games (especially eurogames, if anything notable happened)
-        • Rice Owls (only if something significant occurred)
-        Skip any area with no news that week.
-      - **Closing line**: one thing worth watching next week
-      - Source links inline where helpful
+    CRITICAL GROUPING RULES:
+    - Do NOT combine stories into a single theme unless they share a genuine
+      substantive connection (e.g., two trade policy stories, two AI model
+      releases, multiple developments in the same conflict).
+    - "Thematic vibes" do NOT justify combining. For example, a space mission
+      and a war are NOT one theme just because they represent "highs and lows
+      of humanity." A scientific breakthrough and a political scandal are NOT
+      one theme just because they both happened this week.
+    - A theme with only one major story is perfectly fine if that story is
+      significant enough.
+    - When in doubt, give a story its own theme rather than forcing it into
+      an ill-fitting group.
 
-      STYLE: Analytical and concise. 400-600 words total.
-      No preamble ("Here's your weekly..."). Just start with the opening line.
+    OUTPUT FORMAT:
+    Use proper markdown formatting throughout:
+
+    **Opening line**: one sentence capturing the week's throughline
+
+    Then 4-7 themed sections. For each theme:
+
+    **Theme Title in Bold**
+
+    A paragraph weaving the relevant stories together. Include source links
+    inline using markdown: [Source Name](URL). Every story referenced should
+    have at least one linked source so the reader can dig deeper.
+
+    After all themes, add:
+
+    ---
+
+    **In Your World**
+
+    Brief bullets covering my personal interest areas this week. IMPORTANT:
+    Do NOT repeat any stories or developments already covered in the themed
+    sections above. Only include genuinely additional news from these areas:
+    • Texas Longhorns (all sports, football emphasis)
+    • San Antonio Spurs (scores, standings, transactions)
+    • US Soccer (USMNT/USWNT results, World Cup updates)
+    • College football (major CFB-wide developments)
+    • Apple/AI (notable releases or announcements)
+    • Board games (especially eurogames, if anything notable happened)
+    • Rice Owls (only if something significant occurred)
+    • Hurricane/tropical weather (only if active Gulf/Texas threat)
+
+    Skip any area with no NEW news (beyond what's already in the themes).
+    If all relevant items were already covered in the themes, write:
+    "All major updates from your interest areas are covered in the themes above."
+
+    **What to Watch Next Week**: one thing worth watching
+
+    STYLE:
+    - Analytical and concise. 500-800 words total.
+    - Use **bold** for theme titles and key terms.
+    - Use [linked source names](URL) inline for every referenced story.
+    - Use bullet points (•) for the "In Your World" section.
+    - Use a horizontal rule (---) to separate the themes from "In Your World."
+    - Do NOT include raw news IDs like [INT-5] anywhere in the output. Use
+      the actual story titles or descriptions instead.
+    - No preamble ("Here's your weekly..."). Just start with the opening line.
+    - For stories sourced from Hacker News: summarize the underlying news,
+      never mention upvotes, comment counts, or HN community reaction.
 
 logging:
   level: INFO

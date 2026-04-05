@@ -17,6 +17,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Download previous seen articles for deduplication
+      - name: Download seen articles
+        uses: actions/download-artifact@v4
+        with:
+          name: seen-articles-claude
+          path: data/
+        continue-on-error: true
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -39,7 +47,18 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_SUBJECT: "The Hour Hand [Claude]"
           CONFIG_PATH: config-weekly.yaml
+          SEEN_ARTICLES_PATH: data/seen_articles.json
         run: python main.py
+
+      # Upload updated seen articles for next run
+      - name: Upload seen articles
+        uses: actions/upload-artifact@v4
+        with:
+          name: seen-articles-claude
+          path: data/seen_articles.json
+          retention-days: 10
+          overwrite: true
+        if: always()
 
       - name: Upload logs on failure
         if: failure()
@@ -58,6 +77,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Download previous seen articles for deduplication
+      - name: Download seen articles
+        uses: actions/download-artifact@v4
+        with:
+          name: seen-articles-gemini
+          path: data/
+        continue-on-error: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -81,7 +108,18 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_SUBJECT: "The Hour Hand [Gemini]"
           CONFIG_PATH: config-weekly.yaml
+          SEEN_ARTICLES_PATH: data/seen_articles.json
         run: python main.py
+
+      # Upload updated seen articles for next run
+      - name: Upload seen articles
+        uses: actions/upload-artifact@v4
+        with:
+          name: seen-articles-gemini
+          path: data/seen_articles.json
+          retention-days: 10
+          overwrite: true
+        if: always()
 
       - name: Upload logs on failure
         if: failure()

@@ -1,5 +1,5 @@
 # Personal News Digest — Daily Configuration
-# Selects 3 personally relevant stories each morning
+# Selects 5 personally relevant stories each morning (top 3 summarized, 2 "Also Noted")
 
 llm:
   provider: claude
@@ -8,75 +8,101 @@ news:
   enable_web_search: false
   max_items_per_source: 10
 
-  # Stage 1: Select exactly 3 personally relevant stories
+  # Stage 1: Select exactly 5 personally relevant stories
   stage1_prompt_template: |
-      {formatted_news}
+    {formatted_news}
 
-      ## YOUR TASK — SELECT EXACTLY 3 STORIES
+    ## YOUR TASK — SELECT EXACTLY 5 STORIES
 
-      You are my personal news curator. From the {total_items} news items above,
-      select exactly 3 that are most relevant to MY specific interests.
+    You are my personal news curator. From the {total_items} news items above,
+    select exactly 5 that are most relevant to MY specific interests.
 
-      MY INTEREST PROFILE (in rough priority order):
+    MY INTEREST PROFILE (rough priority guide — NOT a rigid hierarchy):
+    1. TEXAS LONGHORNS: Any Longhorn news is high priority. Football focus,
+       but notable news from other sports welcome. Include recruiting, coaching
+       changes, game results, transfers, schedule/rankings.
+       From Burnt Orange Nation: strongly prefer concrete news (game results,
+       scores, signings, roster moves, coaching changes, recruiting commitments).
+       Skip analysis, opinion, gamethreads, previews, and roundup posts unless
+       they contain a genuinely significant development.
+    2. APPLE ECOSYSTEM & AI: Major Apple product launches, software updates,
+       ecosystem changes. Significant AI developments — capability jumps, major
+       model releases, industry shifts, open source milestones.
+       (Skip: minor app updates, funding rounds, AI hype without substance)
+    3. COLLEGE FOOTBALL (general): Playoff/rankings, conference realignment,
+       rule changes, coaching carousel, transfer portal shakeups.
+    4. BOARD GAMES: Notable new releases, major awards (Spiel des Jahres,
+       Kennerspiel, Deutscher Spiele Preis, Golden Geek), convention news
+       (Gen Con, Essen Spiel, SHUX). Particular interest in eurogames /
+       strategy games, but not exclusively.
+    5. HURRICANE/TROPICAL WEATHER: Only include if a named storm or tropical
+        depression has formed with a forecast track that could affect the Gulf
+        of Mexico or Texas coast. Ignore routine "no tropical activity" outlooks.
+    6. SCIENCE & SPACE: Breakthroughs, discoveries, mission milestones.
+       (Skip: routine ISS ops, incremental studies, health/diet news)
+    7. SAN ANTONIO SPURS: Game results, trades, draft news, major injuries,
+       coaching changes.
+    8. US SOCCER (USMNT & USWNT): Match results, World Cup updates, roster news.
+    9. RICE OWLS: Only if genuinely big — coaching change, stunning upset.
+    10. BIG SPORTS STORIES: Record-breaking, historic, or culturally significant.
 
-      1. TEXAS LONGHORNS: Any Longhorn news is high priority. Football focus,
-         but notable news from other sports welcome. Include recruiting, coaching
-         changes, game results, transfers, schedule/rankings.
-         From Burnt Orange Nation: strongly prefer concrete news (game results,
-         scores, signings, roster moves, coaching changes, recruiting commitments).
-         Skip analysis, opinion, gamethreads, previews, and roundup posts unless
-         they contain a genuinely significant development.
 
-      2. APPLE ECOSYSTEM & AI: Major Apple product launches, software updates,
-         ecosystem changes. Significant AI developments — capability jumps, major
-         model releases, industry shifts, open source milestones.
-         (Skip: minor app updates, funding rounds, AI hype without substance)
+    ESPN TOP NEWS SPORT PRIORITIES (when ESPN stories are candidates):
+    - HIGH interest: College football, NFL, NBA, college baseball, Olympics
+    - MEDIUM interest: College softball, World Cup soccer, professional golf
+    - LOW interest: MLB, NHL, WNBA, other college sports, non-World Cup soccer
+    - NO interest: Auto racing (NASCAR, F1, IndyCar), fighting sports (UFC, boxing)
+    If an ESPN Top News story is about a NO-interest sport, skip it entirely.
+    If LOW-interest, only include if it's a truly historic/record-breaking story.
 
-      3. SCIENCE & SPACE: Breakthroughs, discoveries, mission milestones.
-         (Skip: routine ISS ops, incremental studies, health/diet news)
+    EXCLUDE: Celebrity news, crime, political horse-race coverage, daily
+    political bickering, opinion masquerading as news, outrage bait.
 
-      4. SAN ANTONIO SPURS: Game results, trades, draft news, major injuries,
-         coaching changes.
+    RULES:
+    - Exactly 5 stories. No more, no less.
+    - All 5 can come from the same category if warranted.
+    - The priority list is a GUIDE, not a rigid hierarchy. A fascinating
+      science story beats a routine Longhorns practice report. Prioritize
+      stories that are surprising, significant, or that I wouldn't encounter
+      casually.
+    - Aim for source diversity when possible — if you have two equally strong
+      candidates and one would be a 3rd story from the same domain, prefer
+      the one from the underrepresented source. But never sacrifice relevance
+      for diversity.
+    - For Hacker News items: evaluate the underlying news story, not the
+      Hacker News discussion. Ignore upvote counts, comment counts, and
+      community reaction metadata.
 
-      5. US SOCCER (USMNT & USWNT): Match results, World Cup updates, roster news.
+    Return ONLY a JSON array of selected news IDs:
+    ["INT-1", "INT-5", "INT-12", "INT-22", "INT-30"]
 
-      6. COLLEGE FOOTBALL (general): Playoff/rankings, conference realignment,
-         rule changes, coaching carousel, transfer portal shakeups.
-
-      7. BOARD GAMES: Notable new releases, major awards (Spiel des Jahres,
-         Kennerspiel, Deutscher Spiele Preis, Golden Geek), convention news
-         (Gen Con, Essen Spiel, SHUX). Particular interest in eurogames /
-         strategy games, but not exclusively.
-
-      8. RICE OWLS: Only if genuinely big — coaching change, stunning upset.
-
-      9. BIG SPORTS STORIES: Record-breaking, historic, or culturally significant.
-
-      EXCLUDE: Celebrity news, crime, political horse-race coverage, daily
-      political bickering, opinion masquerading as news, outrage bait.
-
-      RULES:
-      - Exactly 3 stories. No more, no less.
-      - All 3 can come from the same category if warranted.
-      - Prefer surprising stories I wouldn't encounter casually.
-
-      Return ONLY a JSON array of selected news IDs:
-      ["INT-1", "INT-5", "INT-12"]
-
-  # Stage 2: Summarize the 3 selected stories concisely
+  # Stage 2: Summarize the selected stories
   stage2_prompt_template: |
-      Create a concise news digest for these {count} pre-selected stories.
+    Create a concise news digest for these {count} pre-selected stories.
 
-      {selected_news}
+    {selected_news}
 
-      For each story, provide:
-      1. **Bold headline** (your own wording, not the article's)
-      2. **2-3 sentence summary**: what happened, why it matters, key context
-      3. **Source**: [Source Name](URL)
+    STRUCTURE:
+    First, provide FULL SUMMARIES for the top 3 most important stories.
+    Then, provide an "ALSO NOTED" section for the remaining stories.
 
-      Style: conversational but informative, like a knowledgeable friend.
-      Include specific numbers/scores/data when available.
-      Total email under 300 words. No preamble, no sign-off, no category headers.
+    FOR EACH OF THE TOP 3, provide:
+    1. **Bold headline** (your own wording, not the article's)
+    2. **2-3 sentence summary**: what happened, why it matters, key context
+    3. **Source**: [Source Name](URL)
+
+    THEN, under a heading "**Also Noted:**", list the remaining stories as
+    single-line items:
+    - **Bold headline** — one sentence of context. [Source Name](URL)
+
+    RULES:
+    - Style: conversational but informative, like a knowledgeable friend.
+    - Include specific numbers/scores/data when available.
+    - For stories sourced from Hacker News: summarize the underlying news,
+      NOT the Hacker News discussion. Never mention upvote counts, comment
+      counts, or Hacker News community reaction.
+    - Top 3 summaries: ~250 words total. Also Noted section: ~50 words total.
+    - No preamble, no sign-off, no category headers above the top 3.
 
 logging:
   level: INFO

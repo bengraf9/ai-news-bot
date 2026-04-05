@@ -33,7 +33,8 @@ class NewsFetcher:
             "Nature News": "https://www.nature.com/nature.rss",
             "Ars Technica Science": "https://arstechnica.com/science/feed",
             "Space.com": "https://www.space.com/feeds/all",
-
+            "NHC Atlantic Tropical Cyclones": "https://www.nhc.noaa.gov/index-at.xml",
+            
             # --- Texas Longhorns ---
             "Burnt Orange Nation": "https://www.burntorangenation.com/rss/current.xml",
 

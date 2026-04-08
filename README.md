@@ -19,14 +19,14 @@ The LLM filters all news through this priority list (treated as a guide, not a r
 
 1. **Texas Longhorns** — football focus, all sports welcome
 2. **Apple ecosystem & AI** — product launches, capability jumps, industry shifts
-3. **Science & space** — breakthroughs, discoveries, mission milestones
-4. **San Antonio Spurs** — scores, trades, draft news
-5. **US Soccer (USMNT & USWNT)** — results, World Cup updates
-6. **College football (general)** — playoff, realignment, coaching carousel
-7. **Board games** — new releases, awards, conventions (euro emphasis)
-8. **Rice Owls** — only genuinely big news
-9. **Big sports stories** — historic, record-breaking, transcendent
-10. **Hurricane / tropical weather** — only active Gulf of Mexico or Texas coast threats
+3. **College football (general)** — playoff, realignment, coaching carousel
+4. **Board games** — new releases, awards, conventions (euro emphasis)
+5. **Hurricane / tropical weather** — only active Gulf of Mexico or Texas coast threats
+6. **Science & space** — breakthroughs, discoveries, mission milestones
+7. **San Antonio Spurs** — scores, trades, draft news
+8. **US Soccer (USMNT & USWNT)** — results, World Cup updates
+9. **Rice Owls** — only genuinely big news
+10. **Big sports stories** — historic, record-breaking, transcendent
 
 ESPN Top News stories are further filtered by sport priority (college football, NFL, NBA, and Olympics are high; auto racing and fighting sports are excluded).
 

@@ -235,7 +235,13 @@ For each news item:
     def max_items_per_source(self) -> int:
         """Maximum news items to fetch per source"""
         return self.config_data.get("news", {}).get("max_items_per_source", 5)
-
+    
+    @property
+    def max_hours(self):
+        """Maximum age of articles in hours. None means no time filtering."""
+        val = self.config_data.get("news", {}).get("max_hours", None)
+        return float(val) if val is not None else None
+    
     @property
     def llm_provider(self) -> str:
         """Get the LLM provider to use (claude or deepseek)"""

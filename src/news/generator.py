@@ -103,7 +103,8 @@ class NewsGenerator:
         self,
         max_tokens: int = 8000,
         language: str = "en",
-        max_items_per_source: int = 5,
+        max_items_per_source: int = 25,
+        max_hours: Optional[float] = None,
         stage1_template: Optional[str] = None,
         stage2_template: Optional[str] = None
     ) -> str:
@@ -115,7 +116,8 @@ class NewsGenerator:
         Args:
             max_tokens: Maximum tokens in response
             language: Language code for the response
-            max_items_per_source: Maximum items to fetch per source
+            max_items_per_source: Safety-cap max items per source
+            max_hours: If set, only include items from the last N hours
             stage1_template: Optional Stage 1 prompt template (from config)
             stage2_template: Optional Stage 2 prompt template (from config)
 
@@ -130,7 +132,8 @@ class NewsGenerator:
             logger.info("Fetching real-time AI news from sources...")
             news_data = self.news_fetcher.fetch_recent_news(
                 language=language,
-                max_items_per_source=max_items_per_source
+                max_items_per_source=max_items_per_source,
+                max_hours=max_hours,
             )
 
             if not news_data['international'] and not news_data['domestic']:

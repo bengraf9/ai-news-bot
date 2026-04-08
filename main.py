@@ -76,9 +76,10 @@ def main():
                 news_digest = news_gen.generate_news_digest_from_sources(
                     language=language,
                     max_items_per_source=config.max_items_per_source,
+                    max_hours=config.max_hours,
                     stage1_template=config.stage1_prompt_template,
                     stage2_template=config.stage2_prompt_template
-                )
+                )   
 
                 logger.info(f"News digest generated for {language.upper()} ({len(news_digest)} characters)")
                 logger.info("-" * 60)

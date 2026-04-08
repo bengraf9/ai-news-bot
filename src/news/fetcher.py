@@ -3,12 +3,52 @@ News fetcher module - Fetches real-time AI news from various sources
 """
 import requests
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 import xml.etree.ElementTree as ET
 from ..logger import setup_logger
 
 
 logger = setup_logger(__name__)
+
+
+def _parse_pub_date(date_str: str) -> Optional[datetime]:
+    """
+    Parse a publication date string into a timezone-aware datetime.
+    Handles RFC 822 (RSS 2.0), ISO 8601 (Atom/RDF), and common variants.
+
+    Returns None if parsing fails.
+    """
+    if not date_str or not date_str.strip():
+        return None
+
+    date_str = date_str.strip()
+
+    # Try RFC 822 first (most RSS 2.0 feeds)
+    # e.g. "Mon, 06 Apr 2026 12:00:00 GMT"
+    try:
+        dt = parsedate_to_datetime(date_str)
+        # parsedate_to_datetime returns aware datetime if timezone present,
+        # naive if not — normalize to UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        pass
+
+    # Try ISO 8601 (Atom feeds, RDF dc:date)
+    # e.g. "2026-04-06T12:00:00Z", "2026-04-06T12:00:00+00:00", "2026-04-06"
+    try:
+        normalized = date_str.replace('Z', '+00:00')
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        pass
+
+    # Give up
+    return None
 
 
 class NewsFetcher:
@@ -75,13 +115,20 @@ class NewsFetcher:
         self.hindi_feeds = {}
 
 
-    def fetch_rss_feed(self, feed_url: str, max_items: int = 10) -> List[Dict[str, str]]:
+    def fetch_rss_feed(
+        self,
+        feed_url: str,
+        max_items: int = 25,
+        max_hours: Optional[float] = None,
+    ) -> List[Dict[str, str]]:
         """
         Fetch news items from an RSS feed.
 
         Args:
             feed_url: URL of the RSS feed
-            max_items: Maximum number of items to fetch
+            max_items: Safety-cap maximum number of items to return
+            max_hours: If set, only return items published within this many hours.
+                       Items with unparseable dates are included (benefit of the doubt).
 
         Returns:
             List of news items with title, link, description, and published date
@@ -99,32 +146,46 @@ class NewsFetcher:
             # Parse XML
             root = ET.fromstring(response.content)
 
+            # Compute the time-based cutoff if max_hours is set
+            cutoff = None
+            if max_hours is not None:
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=max_hours)
+
             items = []
+            skipped_old = 0
+
             # Handle RSS 2.0, RDF (RSS 1.0), and Atom formats
             if root.tag == 'rss':
-                # RSS 2.0 format
-                news_items = root.findall('.//item')[:max_items]
+                # RSS 2.0 format — grab all items, filter by time
+                news_items = root.findall('.//item')
                 for item in news_items:
                     title = item.find('title')
                     link = item.find('link')
                     description = item.find('description')
                     pub_date = item.find('pubDate')
+                    pub_str = pub_date.text if pub_date is not None else ''
+
+                    # Time filter: skip items older than cutoff
+                    if cutoff and pub_str:
+                        parsed = _parse_pub_date(pub_str)
+                        if parsed is not None and parsed < cutoff:
+                            skipped_old += 1
+                            continue  # too old
 
                     items.append({
                         'title': title.text if title is not None else '',
                         'link': link.text if link is not None else '',
                         'description': self._clean_html(description.text if description is not None else ''),
-                        'published': pub_date.text if pub_date is not None else '',
+                        'published': pub_str,
                     })
+
             elif root.tag.endswith('}RDF') or 'rdf' in root.tag.lower():
                 # RDF / RSS 1.0 format (used by Nature, etc.)
-                # Items use the RSS 1.0 namespace
                 rss1_ns = {'rss1': 'http://purl.org/rss/1.0/',
                            'dc': 'http://purl.org/dc/elements/1.1/'}
-                rdf_items = root.findall('.//rss1:item', rss1_ns)[:max_items]
-                # Fallback: try without namespace (some RDF feeds)
+                rdf_items = root.findall('.//rss1:item', rss1_ns)
                 if not rdf_items:
-                    rdf_items = root.findall('.//item')[:max_items]
+                    rdf_items = root.findall('.//item')
                 for item in rdf_items:
                     title = item.find('rss1:title', rss1_ns)
                     if title is None:
@@ -136,17 +197,24 @@ class NewsFetcher:
                     if description is None:
                         description = item.find('description')
                     pub_date = item.find('dc:date', rss1_ns)
+                    pub_str = pub_date.text if pub_date is not None else ''
+
+                    if cutoff and pub_str:
+                        parsed = _parse_pub_date(pub_str)
+                        if parsed is not None and parsed < cutoff:
+                            skipped_old += 1
+                            continue
 
                     items.append({
                         'title': title.text if title is not None else '',
                         'link': link.text if link is not None else '',
                         'description': self._clean_html(description.text if description is not None else ''),
-                        'published': pub_date.text if pub_date is not None else '',
+                        'published': pub_str,
                     })
             else:
                 # Atom format
                 namespace = {'atom': 'http://www.w3.org/2005/Atom'}
-                entries = root.findall('.//atom:entry', namespace)[:max_items]
+                entries = root.findall('.//atom:entry', namespace)
                 for entry in entries:
                     title = entry.find('atom:title', namespace)
                     link = entry.find('atom:link', namespace)
@@ -156,15 +224,30 @@ class NewsFetcher:
                     updated = entry.find('atom:updated', namespace)
                     if updated is None:
                         updated = entry.find('atom:published', namespace)
+                    pub_str = updated.text if updated is not None else ''
+
+                    if cutoff and pub_str:
+                        parsed = _parse_pub_date(pub_str)
+                        if parsed is not None and parsed < cutoff:
+                            skipped_old += 1
+                            continue
 
                     items.append({
                         'title': title.text if title is not None else '',
                         'link': link.get('href', '') if link is not None else '',
                         'description': self._clean_html(summary.text if summary is not None else ''),
-                        'published': updated.text if updated is not None else '',
+                        'published': pub_str,
                     })
 
-            logger.info(f"Fetched {len(items)} items from RSS feed")
+            # Apply safety cap
+            if len(items) > max_items:
+                logger.info(f"Capping {len(items)} time-filtered items to safety max of {max_items}")
+                items = items[:max_items]
+
+            if skipped_old > 0:
+                logger.info(f"Fetched {len(items)} items from RSS feed (skipped {skipped_old} older than {max_hours}h)")
+            else:
+                logger.info(f"Fetched {len(items)} items from RSS feed")
             return items
 
         except Exception as e:
@@ -180,19 +263,24 @@ class NewsFetcher:
     def fetch_recent_news(
         self,
         language: str = "en",
-        max_items_per_source: int = 5
+        max_items_per_source: int = 25,
+        max_hours: Optional[float] = None,
     ) -> Dict[str, List[Dict[str, str]]]:
         """
         Fetch recent AI news from all configured sources.
 
         Args:
             language: Language code for the response
-            max_items_per_source: Maximum items to fetch per source
+            max_items_per_source: Safety-cap maximum items per source
+            max_hours: If set, only include items from the last N hours
 
         Returns:
             Dictionary with 'international' and 'domestic' news lists
         """
-        logger.info("Fetching recent AI news from all sources...")
+        logger.info(
+            f"Fetching recent news from all sources "
+            f"(max_hours={max_hours}, cap={max_items_per_source}/source)..."
+        )
 
         all_news = {
             'international': [],
@@ -201,7 +289,11 @@ class NewsFetcher:
 
         # Fetch international news
         for source_name, feed_url in self.rss_feeds.items():
-            items = self.fetch_rss_feed(feed_url, max_items_per_source)
+            items = self.fetch_rss_feed(
+                feed_url,
+                max_items=max_items_per_source,
+                max_hours=max_hours,
+            )
             for item in items:
                 item['source'] = source_name
                 all_news['international'].append(item)
@@ -228,7 +320,11 @@ class NewsFetcher:
             return all_news
 
         for source_name, feed_url in feeds.items():
-            items = self.fetch_rss_feed(feed_url, max_items_per_source)
+            items = self.fetch_rss_feed(
+                feed_url,
+                max_items=max_items_per_source,
+                max_hours=max_hours,
+            )
             for item in items:
                 item['source'] = source_name
                 all_news['domestic'].append(item)

@@ -6,7 +6,13 @@ llm:
 
 news:
   enable_web_search: false
-  max_items_per_source: 10
+  # Time-based filtering: only include articles from the last 36 hours.
+  # This naturally pulls more from fast feeds (BBC, NPR) and fewer from
+  # slow feeds (board games, Rice Owls), and avoids stale previews showing
+  # up after the event they preview has already happened.
+  max_hours: 36
+  # Safety cap per source (prevents a misbehaving feed from flooding the pipeline)
+  max_items_per_source: 25
 
   # Stage 1: Select exactly 5 personally relevant stories
   stage1_prompt_template: |

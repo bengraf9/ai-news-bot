@@ -6,8 +6,11 @@ llm:
 
 news:
   enable_web_search: false
-  # Fetch more items for weekly — looking at a full week of content
-  max_items_per_source: 20
+  # Time-based filtering: 180 hours = 7.5 days, covering the full week
+  # with a buffer for timezone differences.
+  max_hours: 180
+  # Safety cap per source
+  max_items_per_source: 50
 
   # Stage 1: Select the 8-12 most significant stories of the week
   stage1_prompt_template: |

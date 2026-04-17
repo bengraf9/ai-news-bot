@@ -7,9 +7,6 @@ llm:
 news:
   enable_web_search: false
   # Time-based filtering: only include articles from the last 36 hours.
-  # This naturally pulls more from fast feeds (BBC, NPR) and fewer from
-  # slow feeds (board games, Rice Owls), and avoids stale previews showing
-  # up after the event they preview has already happened.
   max_hours: 36
   # Safety cap per source (prevents a misbehaving feed from flooding the pipeline)
   max_items_per_source: 25
@@ -91,10 +88,17 @@ news:
     First, provide FULL SUMMARIES for the top 3 most important stories.
     Then, provide an "ALSO NOTED" section for the remaining stories.
 
-    FOR EACH OF THE TOP 3, provide:
-    1. **Bold headline** (your own wording, not the article's)
-    2. **2-3 sentence summary**: what happened, why it matters, key context
-    3. **Source**: [Source Name](URL)
+    FOR EACH OF THE TOP 3, use this exact format:
+
+    **Bold headline** (your own wording, not the article's)
+
+    2-3 sentence summary of what happened, why it matters, and key context.
+    Include specific numbers, scores, or data when available.
+    [Source Name](URL)
+
+    IMPORTANT: Every one of the top 3 stories MUST end with a source link
+    on its own line, formatted as [Source Name](URL). This is required —
+    do not omit the link. Use the link provided in the story data above.
 
     THEN, under a heading "**Also Noted:**", list the remaining stories as
     single-line items:
@@ -102,7 +106,6 @@ news:
 
     RULES:
     - Style: conversational but informative, like a knowledgeable friend.
-    - Include specific numbers/scores/data when available.
     - For stories sourced from Hacker News: summarize the underlying news,
       NOT the Hacker News discussion. Never mention upvote counts, comment
       counts, or Hacker News community reaction.

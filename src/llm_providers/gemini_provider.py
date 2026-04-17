@@ -52,7 +52,7 @@ class GeminiProvider(BaseLLMProvider):
     def default_model(self) -> str:
         return "gemini-2.5-flash"
 
-    @with_retries(max_attempts=4, base_delay=2.0, max_delay=60.0)
+    @with_retries(max_attempts=5, base_delay=10.0, max_delay=60.0)
     def generate(
         self,
         messages: List[Dict[str, str]],

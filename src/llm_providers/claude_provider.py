@@ -5,6 +5,7 @@ import os
 from typing import List, Dict, Any, Optional
 from anthropic import Anthropic
 from .base_provider import BaseLLMProvider
+from .retry import with_retries
 from ..logger import setup_logger
 
 
@@ -43,6 +44,7 @@ class ClaudeProvider(BaseLLMProvider):
     def default_model(self) -> str:
         return "claude-sonnet-4-5-20250929"
     
+    @with_retries(max_attempts=4, base_delay=2.0, max_delay=60.0)
     def generate(
         self,
         messages: List[Dict[str, str]],
@@ -52,7 +54,10 @@ class ClaudeProvider(BaseLLMProvider):
     ) -> str:
         """
         Generate a response using Claude API.
-        
+
+        Wrapped with retry logic for transient errors (429 rate limit,
+        529 overloaded, 5xx service errors).
+
         Args:
             messages: List of message dicts with 'role' and 'content' keys
             max_tokens: Maximum tokens in response
@@ -63,7 +68,7 @@ class ClaudeProvider(BaseLLMProvider):
             Generated text response
             
         Raises:
-            Exception: If API call fails
+            Exception: If API call fails after all retry attempts
         """
         try:
             logger.debug(f"Calling Claude API with {len(messages)} messages")
@@ -84,7 +89,7 @@ class ClaudeProvider(BaseLLMProvider):
             raise Exception("No text response received from Claude")
             
         except Exception as e:
-            logger.error(f"Claude API error: {str(e)}", exc_info=True)
+            logger.error(f"Claude API error: {str(e)}")
             raise
     
     def generate_with_tools(

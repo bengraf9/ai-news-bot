@@ -1,10 +1,17 @@
 """
 Gemini Provider - Google Gemini API implementation
+
+Uses the modern `google-genai` SDK (replacing the deprecated
+`google-generativeai` package).
 """
 import os
 from typing import List, Dict, Any, Optional
-import google.generativeai as genai
+
+from google import genai
+from google.genai import types as genai_types
+
 from .base_provider import BaseLLMProvider
+from .retry import with_retries
 from ..logger import setup_logger
 
 
@@ -12,7 +19,7 @@ logger = setup_logger(__name__)
 
 
 class GeminiProvider(BaseLLMProvider):
-    """Google Gemini LLM provider"""
+    """Google Gemini LLM provider (google-genai SDK)"""
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
@@ -33,9 +40,8 @@ class GeminiProvider(BaseLLMProvider):
 
         super().__init__(api_key=api_key, model=model or self.default_model)
 
-        # Configure Gemini API
-        genai.configure(api_key=self.api_key)
-        self.client = genai.GenerativeModel(self.model)
+        # New SDK uses an explicit Client object
+        self.client = genai.Client(api_key=self.api_key)
         logger.info(f"Gemini provider initialized with model: {self.model}")
 
     @property
@@ -44,8 +50,9 @@ class GeminiProvider(BaseLLMProvider):
 
     @property
     def default_model(self) -> str:
-        return "gemini-3-pro-preview"
+        return "gemini-2.5-flash"
 
+    @with_retries(max_attempts=4, base_delay=2.0, max_delay=60.0)
     def generate(
         self,
         messages: List[Dict[str, str]],
@@ -55,6 +62,9 @@ class GeminiProvider(BaseLLMProvider):
     ) -> str:
         """
         Generate a response using Gemini API.
+
+        Wrapped with retry logic for transient errors (429 rate limit,
+        503 unavailable, 5xx service errors).
 
         Args:
             messages: List of message dicts with 'role' and 'content' keys
@@ -66,24 +76,27 @@ class GeminiProvider(BaseLLMProvider):
             Generated text response
 
         Raises:
-            Exception: If API call fails
+            Exception: If API call fails after all retry attempts
         """
         try:
             logger.debug(f"Calling Gemini API with {len(messages)} messages")
 
-            # Convert messages to Gemini format
-            gemini_messages = self._convert_messages_to_gemini_format(messages)
+            # Flatten our messages list into a single prompt string
+            # (Gemini doesn't natively use the same role-based format as Claude/OpenAI;
+            # collapsing into a single user prompt is the simplest correct approach.)
+            prompt = self._convert_messages_to_gemini_format(messages)
 
-            # Configure generation settings
-            generation_config = genai.types.GenerationConfig(
+            # Generation config — note: types.GenerateContentConfig replaces the old
+            # genai.types.GenerationConfig
+            config = genai_types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
             )
 
-            # Generate response
-            response = self.client.generate_content(
-                gemini_messages,
-                generation_config=generation_config,
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=config,
             )
 
             if response.text:
@@ -92,7 +105,7 @@ class GeminiProvider(BaseLLMProvider):
             raise Exception("No response received from Gemini")
 
         except Exception as e:
-            logger.error(f"Gemini API error: {str(e)}", exc_info=True)
+            logger.error(f"Gemini API error: {str(e)}")
             raise
 
     def generate_with_tools(
@@ -107,37 +120,20 @@ class GeminiProvider(BaseLLMProvider):
         """
         Generate a response with tool calling support.
 
-        Args:
-            messages: List of message dicts
-            tools: List of tool definitions
-            max_tokens: Maximum tokens in response
-            max_iterations: Maximum tool use iterations
-            tool_handler: Function to handle tool calls
-            **kwargs: Additional Gemini-specific parameters
-
-        Returns:
-            Generated text response after tool interactions
-
-        Raises:
-            Exception: If generation fails
+        Currently a passthrough to generate() — full tool-calling support
+        in Gemini would require porting the tool definitions to the new
+        SDK's `types.Tool` format. Not currently used by this app.
         """
         try:
             logger.debug(f"Calling Gemini API with tools, max_iterations={max_iterations}")
-
-            # Convert tools to Gemini format
-            gemini_tools = self._convert_tools_to_gemini_format(tools)
-
-            # For now, just generate without tools (simplified implementation)
-            # Full tool support would require more complex conversation handling
             return self.generate(messages, max_tokens=max_tokens, **kwargs)
-
         except Exception as e:
             logger.error(f"Gemini API error with tools: {str(e)}", exc_info=True)
             raise
 
     def _convert_messages_to_gemini_format(self, messages: List[Dict[str, str]]) -> str:
         """
-        Convert standard message format to Gemini format.
+        Convert standard message format to a single Gemini prompt string.
 
         Args:
             messages: List of message dicts
@@ -145,7 +141,6 @@ class GeminiProvider(BaseLLMProvider):
         Returns:
             Formatted prompt string for Gemini
         """
-        # Gemini uses a simpler format - we'll combine all messages into a prompt
         prompt_parts = []
 
         for msg in messages:
@@ -160,16 +155,3 @@ class GeminiProvider(BaseLLMProvider):
                 prompt_parts.append(f"Assistant: {content}")
 
         return "\n\n".join(prompt_parts)
-
-    def _convert_tools_to_gemini_format(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Convert tool definitions to Gemini format.
-
-        Args:
-            tools: List of tool definitions
-
-        Returns:
-            List of tools in Gemini format
-        """
-        # Simplified - would need proper implementation for production use
-        return tools

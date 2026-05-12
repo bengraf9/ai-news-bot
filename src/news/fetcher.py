@@ -69,10 +69,9 @@ class NewsFetcher:
             "MIT Technology Review": "https://www.technologyreview.com/feed/",
             "Hacker News 100+": "https://hnrss.org/frontpage?points=100",
 
-            # --- Science & Space ---
+            # --- Science ---
             "Nature News": "https://www.nature.com/nature.rss",
             "Ars Technica Science": "https://arstechnica.com/science/feed",
-            "Space.com": "https://www.space.com/feeds/all",
 
             # --- Hurricane / Tropical Weather ---
             "NHC Atlantic Tropical Cyclones": "https://www.nhc.noaa.gov/index-at.xml",

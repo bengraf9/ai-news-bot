@@ -12,14 +12,14 @@ news:
   # Safety cap per source
   max_items_per_source: 50
 
-  # Stage 1: Select the 8-12 most significant stories of the week
+  # Stage 1: Select exactly 8 most significant stories of the week
   stage1_prompt_template: |
     {formatted_news}
 
-    ## YOUR TASK — SELECT 8-12 MOST SIGNIFICANT STORIES OF THE WEEK
+    ## YOUR TASK — SELECT EXACTLY 8 STORIES
 
     You are my weekly news analyst. From the {total_items} news items above,
-    select 8-12 that represent the most significant developments this week.
+    select exactly 8 that represent the most significant developments this week.
 
     WHAT COUNTS AS SIGNIFICANT:
     - Geopolitical shifts (alliances, conflicts, treaties)
@@ -29,8 +29,8 @@ news:
       (NOT polls, gaffes, endorsements, campaign play-by-play)
     - Scientific milestones (paradigm-level, not incremental)
     - Technology inflection points, especially AI and Apple ecosystem
-    - Major developments in my interest areas (Texas Longhorns, Spurs,
-      US Soccer, college football, board games)
+    - Major developments in my interest areas (Texas Longhorns, college
+      football, board games, Spurs, US Soccer)
     - Hurricane/tropical weather: Only if a named storm formed with a
       track potentially affecting the Gulf of Mexico or Texas coast
 
@@ -39,6 +39,13 @@ news:
     - MEDIUM interest: College softball, World Cup soccer, professional golf
     - LOW interest: MLB, NHL, WNBA, other college sports, non-World Cup soccer
     - NO interest: Auto racing, fighting sports (UFC, boxing)
+
+    TOPIC CONCENTRATION LIMITS — even during major event weeks:
+    - Apple/iOS/Mac stories: maximum 3 of your 8 selections
+    - Any single news source: maximum 3 of your 8 selections
+    - Geopolitical/policy stories: aim for at least 1 if newsworthy
+    These limits exist so the weekly synthesis reflects the breadth of the
+    world's news, not just the loudest topic of the week.
 
     EXCLUDE:
     - Stories that will be forgotten in a month
@@ -49,10 +56,8 @@ news:
     For Hacker News items: evaluate the underlying news, not the HN discussion.
     Ignore upvote counts, comment counts, and community reaction metadata.
 
-    Return ONLY a JSON array of selected news IDs:
-    ["INT-1", "INT-5", "INT-12", ...]
-
-    Select 8-12 items.
+    Return ONLY a JSON array of exactly 8 news IDs:
+    ["INT-1", "INT-5", "INT-12", "INT-22", "INT-30", "INT-41", "INT-55", "INT-67"]
 
   # Stage 2: Synthesize into a thematic weekly narrative
   stage2_prompt_template: |
@@ -62,76 +67,87 @@ news:
     {selected_news}
 
     YOUR TASK:
-    Identify 4-7 THEMES or SHIFTS from this week. Not individual stories —
-    patterns and trajectories. Think like a historian writing a week-in-review.
+    Identify 4-6 THEMES or SHIFTS from this week. Think like a historian
+    writing a week-in-review — patterns and trajectories, not article summaries.
 
-    CRITICAL GROUPING RULES:
+    CRITICAL — WHAT THIS OUTPUT MUST NOT BE:
+    - Do NOT produce a list or catalog of article summaries.
+    - Do NOT use the input categories as your section titles. Titles like
+      "Product Launches," "Policy & Regulation," "Research Breakthroughs,"
+      or any other generic category label are forbidden. Your theme titles
+      must reflect what specifically happened THIS week, not a content type.
+    - Do NOT give each story its own section. Multiple stories must be woven
+      into each thematic paragraph.
+    - A reader should NOT be able to read your output and identify which
+      specific source article each sentence came from. The synthesis should
+      obscure the seams between stories.
+    - If you find yourself writing one paragraph per article, STOP and
+      restructure.
+
+    CRITICAL — GROUPING RULES:
     - Do NOT combine stories into a single theme unless they share a genuine
       substantive connection (e.g., two trade policy stories, two AI model
       releases, multiple developments in the same conflict).
-    - "Thematic vibes" do NOT justify combining. For example, a space mission
-      and a war are NOT one theme just because they represent "highs and lows
-      of humanity." A scientific breakthrough and a political scandal are NOT
-      one theme just because they both happened this week.
-    - A theme with only one major story is perfectly fine if that story is
-      significant enough.
+    - "Thematic vibes" do NOT justify combining. A space mission and a war
+      are NOT one theme just because they represent "highs and lows of
+      humanity."
+    - A theme covering only one story is fine if that story is significant
+      enough. But the paragraph should still provide context, stakes, and
+      trajectory — not just a summary.
     - When in doubt, give a story its own theme rather than forcing it into
       an ill-fitting group.
 
-    OUTPUT FORMAT:
-    Use proper markdown formatting throughout:
+    OUTPUT FORMAT — follow this structure exactly:
 
-    **Opening line**: one sentence capturing the week's throughline
+    One sentence capturing the week's throughline (no header, just the sentence).
 
-    Then 4-7 themed sections. For each theme:
-
-    **Theme Title in Bold**
+    **Theme Title** (invent a title specific to this week's events)
 
     A paragraph weaving the relevant stories together. Include source links
-    inline using markdown: [Source Name](URL). Every story referenced should
-    have at least one linked source so the reader can dig deeper.
+    inline: [Source Name](URL). Every story referenced needs at least one link.
 
-    After all themes, add:
+    (repeat for each of your 4-6 themes)
 
     ---
 
-		**Dose of Positivity**
+    **Dose of Positivity**
 
-    Pick at least one hopeful, uplifting story to summarize here in a paragraph. 
-		Include source links inline using markdown: [Source Name](URL). Every story 
-		referenced should have at least one linked source so the reader can dig deeper.
+    Pick one hopeful or genuinely uplifting story from the week and summarize
+    it here in a short paragraph. Include at least one inline source link:
+    [Source Name](URL). Do not repeat a story already covered in the themes
+    above — find something that didn't make the main themes if possible.
 
     **In Your World**
 
-    Brief bullets covering my personal interest areas this week. IMPORTANT:
-    Do NOT repeat any stories or developments already covered in the themed
-    sections above. Only include genuinely additional news from these areas:
-    • Texas Longhorns (all sports, football emphasis)
-    • San Antonio Spurs (scores, standings, transactions)
-    • US Soccer (USMNT/USWNT results, World Cup updates)
-    • College football (major CFB-wide developments)
-    • Apple/AI (notable releases or announcements)
-    • Board games (especially eurogames, if anything notable happened)
-    • Rice Owls (only if something significant occurred)
-    • Hurricane/tropical weather (only if active Gulf/Texas threat)
+    Brief bullets on my personal interest areas. IMPORTANT: Do NOT repeat
+    anything already covered in the themes above. Only include genuinely
+    additional developments from these areas:
+    - Texas Longhorns (all sports, football emphasis)
+    - College football (major CFB-wide developments)
+    - Board games (especially eurogames, if anything notable happened)
+    - Hurricane/tropical weather (only if active Gulf/Texas threat)
+    - Apple/AI (notable releases or announcements)
+    - Science & space (notable discoveries or missions)
+    - San Antonio Spurs (scores, standings, transactions)
+    - US Soccer (USMNT/USWNT results, World Cup updates)
+    - Rice Owls (only if something significant occurred)
 
-    Skip any area with no NEW news (beyond what's already in the themes).
     If all relevant items were already covered in the themes, write:
     "All major updates from your interest areas are covered in the themes above."
 
-    **What to Watch Next Week**: one thing worth watching
+    **What to Watch Next Week**: one specific thing worth tracking.
 
     STYLE:
-    - Analytical and concise. 500-800 words total.
-    - Use **bold** for theme titles and key terms.
+    - Analytical and concise. 500-800 words total (not counting "In Your World").
+    - Use **bold** for theme titles only — do not bold individual terms mid-paragraph.
     - Use [linked source names](URL) inline for every referenced story.
-    - Use bullet points (•) for the "In Your World" section.
-    - Use a horizontal rule (---) to separate the themes from "In Your World."
-    - Do NOT include raw news IDs like [INT-5] anywhere in the output. Use
-      the actual story titles or descriptions instead.
-    - No preamble ("Here's your weekly..."). Just start with the opening line.
-    - For stories sourced from Hacker News: summarize the underlying news,
-      never mention upvotes, comment counts, or HN community reaction.
+    - Use bullet points for the "In Your World" section only.
+    - Use a horizontal rule (---) before "Dose of Positivity" and "In Your World."
+    - Do NOT include raw news IDs like [INT-5] anywhere in the output.
+    - No preamble ("Here's your weekly..."). Start immediately with the
+      opening throughline sentence.
+    - For Hacker News stories: summarize the underlying news only. Never
+      mention upvotes, comment counts, or community reaction.
 
 logging:
   level: INFO

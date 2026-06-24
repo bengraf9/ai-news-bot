@@ -12,6 +12,21 @@ from ..logger import setup_logger
 logger = setup_logger(__name__)
 
 
+def _text_or_empty(element) -> str:
+    """
+    Safely extract text from an ElementTree element.
+
+    Handles two distinct cases that both need to resolve to '':
+    1. The element itself is None (tag doesn't exist in this item)
+    2. The element exists but is empty, e.g. <title></title>, which
+       makes ElementTree return None for .text even though the element
+       is present.
+    """
+    if element is None:
+        return ''
+    return element.text or ''
+
+
 def _parse_pub_date(date_str: str) -> Optional[datetime]:
     """
     Parse a publication date string into a timezone-aware datetime.
@@ -69,9 +84,10 @@ class NewsFetcher:
             "MIT Technology Review": "https://www.technologyreview.com/feed/",
             "Hacker News 100+": "https://hnrss.org/frontpage?points=100",
 
-            # --- Science ---
+            # --- Science & Space ---
             "Nature News": "https://www.nature.com/nature.rss",
             "Ars Technica Science": "https://arstechnica.com/science/feed",
+            "Space.com": "https://www.space.com/feeds/all",
 
             # --- Hurricane / Tropical Weather ---
             "NHC Atlantic Tropical Cyclones": "https://www.nhc.noaa.gov/index-at.xml",
@@ -130,7 +146,9 @@ class NewsFetcher:
                        Items with unparseable dates are included (benefit of the doubt).
 
         Returns:
-            List of news items with title, link, description, and published date
+            List of news items with title, link, description, and published date.
+            All string fields are guaranteed to be actual strings (never None),
+            even when the source XML has empty tags like <title></title>.
         """
         try:
             logger.info(f"Fetching RSS feed: {feed_url}")
@@ -152,17 +170,17 @@ class NewsFetcher:
 
             items = []
             skipped_old = 0
+            skipped_empty_title = 0
 
             # Handle RSS 2.0, RDF (RSS 1.0), and Atom formats
             if root.tag == 'rss':
                 # RSS 2.0 format — grab all items, filter by time
                 news_items = root.findall('.//item')
                 for item in news_items:
-                    title = item.find('title')
-                    link = item.find('link')
-                    description = item.find('description')
-                    pub_date = item.find('pubDate')
-                    pub_str = pub_date.text if pub_date is not None else ''
+                    title_text = _text_or_empty(item.find('title'))
+                    link_text = _text_or_empty(item.find('link'))
+                    description_text = _text_or_empty(item.find('description'))
+                    pub_str = _text_or_empty(item.find('pubDate'))
 
                     # Time filter: skip items older than cutoff
                     if cutoff and pub_str:
@@ -171,10 +189,16 @@ class NewsFetcher:
                             skipped_old += 1
                             continue  # too old
 
+                    # Skip items with no title and no link — not useful to the
+                    # LLM and a common source of empty-tag dedup hash collisions
+                    if not title_text and not link_text:
+                        skipped_empty_title += 1
+                        continue
+
                     items.append({
-                        'title': title.text if title is not None else '',
-                        'link': link.text if link is not None else '',
-                        'description': self._clean_html(description.text if description is not None else ''),
+                        'title': title_text,
+                        'link': link_text,
+                        'description': self._clean_html(description_text),
                         'published': pub_str,
                     })
 
@@ -186,17 +210,21 @@ class NewsFetcher:
                 if not rdf_items:
                     rdf_items = root.findall('.//item')
                 for item in rdf_items:
-                    title = item.find('rss1:title', rss1_ns)
-                    if title is None:
-                        title = item.find('title')
-                    link = item.find('rss1:link', rss1_ns)
-                    if link is None:
-                        link = item.find('link')
-                    description = item.find('rss1:description', rss1_ns)
-                    if description is None:
-                        description = item.find('description')
-                    pub_date = item.find('dc:date', rss1_ns)
-                    pub_str = pub_date.text if pub_date is not None else ''
+                    title_el = item.find('rss1:title', rss1_ns)
+                    if title_el is None:
+                        title_el = item.find('title')
+                    link_el = item.find('rss1:link', rss1_ns)
+                    if link_el is None:
+                        link_el = item.find('link')
+                    description_el = item.find('rss1:description', rss1_ns)
+                    if description_el is None:
+                        description_el = item.find('description')
+                    pub_date_el = item.find('dc:date', rss1_ns)
+
+                    title_text = _text_or_empty(title_el)
+                    link_text = _text_or_empty(link_el)
+                    description_text = _text_or_empty(description_el)
+                    pub_str = _text_or_empty(pub_date_el)
 
                     if cutoff and pub_str:
                         parsed = _parse_pub_date(pub_str)
@@ -204,10 +232,14 @@ class NewsFetcher:
                             skipped_old += 1
                             continue
 
+                    if not title_text and not link_text:
+                        skipped_empty_title += 1
+                        continue
+
                     items.append({
-                        'title': title.text if title is not None else '',
-                        'link': link.text if link is not None else '',
-                        'description': self._clean_html(description.text if description is not None else ''),
+                        'title': title_text,
+                        'link': link_text,
+                        'description': self._clean_html(description_text),
                         'published': pub_str,
                     })
             else:
@@ -215,15 +247,20 @@ class NewsFetcher:
                 namespace = {'atom': 'http://www.w3.org/2005/Atom'}
                 entries = root.findall('.//atom:entry', namespace)
                 for entry in entries:
-                    title = entry.find('atom:title', namespace)
-                    link = entry.find('atom:link', namespace)
-                    summary = entry.find('atom:summary', namespace)
-                    if summary is None:
-                        summary = entry.find('atom:content', namespace)
-                    updated = entry.find('atom:updated', namespace)
-                    if updated is None:
-                        updated = entry.find('atom:published', namespace)
-                    pub_str = updated.text if updated is not None else ''
+                    title_el = entry.find('atom:title', namespace)
+                    link_el = entry.find('atom:link', namespace)
+                    summary_el = entry.find('atom:summary', namespace)
+                    if summary_el is None:
+                        summary_el = entry.find('atom:content', namespace)
+                    updated_el = entry.find('atom:updated', namespace)
+                    if updated_el is None:
+                        updated_el = entry.find('atom:published', namespace)
+
+                    title_text = _text_or_empty(title_el)
+                    # Atom links use an href attribute, not element text
+                    link_text = link_el.get('href', '') if link_el is not None else ''
+                    description_text = _text_or_empty(summary_el)
+                    pub_str = _text_or_empty(updated_el)
 
                     if cutoff and pub_str:
                         parsed = _parse_pub_date(pub_str)
@@ -231,10 +268,14 @@ class NewsFetcher:
                             skipped_old += 1
                             continue
 
+                    if not title_text and not link_text:
+                        skipped_empty_title += 1
+                        continue
+
                     items.append({
-                        'title': title.text if title is not None else '',
-                        'link': link.get('href', '') if link is not None else '',
-                        'description': self._clean_html(summary.text if summary is not None else ''),
+                        'title': title_text,
+                        'link': link_text,
+                        'description': self._clean_html(description_text),
                         'published': pub_str,
                     })
 
@@ -243,8 +284,13 @@ class NewsFetcher:
                 logger.info(f"Capping {len(items)} time-filtered items to safety max of {max_items}")
                 items = items[:max_items]
 
-            if skipped_old > 0:
-                logger.info(f"Fetched {len(items)} items from RSS feed (skipped {skipped_old} older than {max_hours}h)")
+            log_suffix = []
+            if skipped_old:
+                log_suffix.append(f"{skipped_old} older than {max_hours}h")
+            if skipped_empty_title:
+                log_suffix.append(f"{skipped_empty_title} empty/malformed")
+            if log_suffix:
+                logger.info(f"Fetched {len(items)} items from RSS feed (skipped {', '.join(log_suffix)})")
             else:
                 logger.info(f"Fetched {len(items)} items from RSS feed")
             return items
@@ -257,7 +303,7 @@ class NewsFetcher:
         """Remove HTML tags from text"""
         import re
         clean = re.compile('<.*?>')
-        return re.sub(clean, '', text).strip()
+        return re.sub(clean, '', text or '').strip()
 
     def fetch_recent_news(
         self,

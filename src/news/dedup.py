@@ -14,9 +14,16 @@ SEEN_FILE = os.getenv("SEEN_ARTICLES_PATH", "data/seen_articles.json")
 RETENTION_DAYS = 7
 
 
-def _hash_article(url: str, title: str) -> str:
-    """Create a stable hash from URL and title."""
-    key = f"{url.strip().lower()}|{title.strip().lower()}"
+def _hash_article(url, title) -> str:
+    """
+    Create a stable hash from URL and title.
+
+    Tolerates None values (e.g. an RSS <title></title> with no text content
+    returns None from ElementTree, not an empty string) by coercing to ''.
+    """
+    safe_url = (url or "").strip().lower()
+    safe_title = (title or "").strip().lower()
+    key = f"{safe_url}|{safe_title}"
     return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
@@ -54,8 +61,8 @@ def filter_unseen(articles: list, seen: dict) -> list:
     """
     unseen = []
     for article in articles:
-        url = article.get("url", article.get("link", ""))
-        title = article.get("title", "")
+        url = article.get("url") or article.get("link")
+        title = article.get("title")
         h = _hash_article(url, title)
         if h not in seen:
             unseen.append(article)
@@ -75,8 +82,8 @@ def mark_as_seen(articles: list, seen: dict) -> dict:
     """
     today = datetime.now().strftime("%Y-%m-%d")
     for article in articles:
-        url = article.get("url", article.get("link", ""))
-        title = article.get("title", "")
+        url = article.get("url") or article.get("link")
+        title = article.get("title")
         h = _hash_article(url, title)
         seen[h] = today
     return seen

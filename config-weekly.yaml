@@ -97,6 +97,29 @@ news:
     - When in doubt, give a story its own theme rather than forcing it into
       an ill-fitting group.
 
+    CRITICAL — NO CONTRASTIVE FRAMING DEVICES:
+    - Each theme's paragraph must stand on its own. Do NOT reference other
+      themes, other stories, or "the state of the world generally" as a
+      backdrop, contrast, or mood-setter for a theme that doesn't actually
+      involve them.
+    - Ban these rhetorical patterns entirely, in any phrasing:
+      - "Against the backdrop of [unrelated topic]..."
+      - "Even as [unrelated topic] dominates/rages/continues..."
+      - "In a week otherwise defined by [unrelated topic]..."
+      - "Amid a world of [unrelated topic]..."
+      - Any sentence whose only function is to remind the reader of other
+        news before or after describing this theme's actual content.
+    - A positive or neutral story does not need to be contrasted with war,
+      conflict, or "corporate malfeasance" elsewhere to earn its place.
+      Let it stand as its own significance.
+    - Exception: if two stories are GENUINELY causally or substantively
+      linked (per the grouping rules above), connecting language between
+      them is fine — this ban is only on cosmetic contrast for stories
+      that have no real relationship.
+    - Test before finalizing: if you removed the opening contrastive
+      clause from a sentence, would the paragraph lose any factual content?
+      If no, delete the clause.
+      
     OUTPUT FORMAT — follow this structure exactly:
 
     One sentence capturing the week's throughline (no header, just the sentence).
@@ -116,6 +139,8 @@ news:
     it here in a short paragraph. Include at least one inline source link:
     [Source Name](URL). Do not repeat a story already covered in the themes
     above — find something that didn't make the main themes if possible.
+    Present it on its own terms — do not frame it against war, conflict, or
+    bad news elsewhere as a contrast device.
 
     **In Your World**
 

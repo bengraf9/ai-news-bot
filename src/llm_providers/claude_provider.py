@@ -29,11 +29,11 @@ class ClaudeProvider(BaseLLMProvider):
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError(
-                " API key must be provided or set in _API_KEY environment variable"
+                "Anthropic API key must be provided or set in ANTHROPIC_API_KEY environment variable"
             )
         
         super().__init__(api_key=api_key, model=model or self.default_model)
-        self.client = (api_key=self.api_key)
+        self.client = Anthropic(api_key=self.api_key)
         logger.info(f"Claude provider initialized with model: {self.model}")
     
     @property

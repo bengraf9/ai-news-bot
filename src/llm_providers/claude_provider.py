@@ -29,11 +29,11 @@ class ClaudeProvider(BaseLLMProvider):
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError(
-                "Anthropic API key must be provided or set in ANTHROPIC_API_KEY environment variable"
+                " API key must be provided or set in _API_KEY environment variable"
             )
         
         super().__init__(api_key=api_key, model=model or self.default_model)
-        self.client = Anthropic(api_key=self.api_key)
+        self.client = (api_key=self.api_key)
         logger.info(f"Claude provider initialized with model: {self.model}")
     
     @property
@@ -49,7 +49,6 @@ class ClaudeProvider(BaseLLMProvider):
         self,
         messages: List[Dict[str, str]],
         max_tokens: int = 2000,
-        temperature: float = 1.0,
         **kwargs
     ) -> str:
         """
@@ -61,7 +60,6 @@ class ClaudeProvider(BaseLLMProvider):
         Args:
             messages: List of message dicts with 'role' and 'content' keys
             max_tokens: Maximum tokens in response
-            temperature: Sampling temperature
             **kwargs: Additional Claude-specific parameters
             
         Returns:
@@ -76,7 +74,6 @@ class ClaudeProvider(BaseLLMProvider):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                temperature=temperature,
                 messages=messages,
                 **kwargs
             )

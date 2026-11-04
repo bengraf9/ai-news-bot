@@ -101,7 +101,7 @@ class NewsGenerator:
 
     def generate_news_digest_from_sources(
         self,
-        max_tokens: int = 8000,
+        max_tokens: int = 12000,
         language: str = "en",
         max_items_per_source: int = 25,
         max_hours: Optional[float] = None,
@@ -182,7 +182,7 @@ class NewsGenerator:
             messages = [{"role": "user", "content": selection_prompt}]
             selection_response = self.provider.generate(
                 messages=messages,
-                max_tokens=4000 # give enough tokens for selection
+                max_tokens=8000 # give enough tokens for selection
             )
 
             # Parse selected IDs

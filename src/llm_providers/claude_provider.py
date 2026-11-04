@@ -77,13 +77,33 @@ class ClaudeProvider(BaseLLMProvider):
                 messages=messages,
                 **kwargs
             )
-            
-            # Extract text from response
-            for block in response.content:
-                if block.type == "text":
-                    return block.text
-            
-            raise Exception("No text response received from Claude")
+                        
+            # Log token usage and why generation stopped
+            logger.info(
+                f"Claude usage: input={response.usage.input_tokens}, "
+                f"output={response.usage.output_tokens}, "
+                f"stop_reason={response.stop_reason}, "
+                f"max_tokens={max_tokens}"
+            )
+
+            # Don't accept truncated or otherwise incomplete responses
+            if response.stop_reason != "end_turn":
+                raise RuntimeError(
+                    f"Claude did not complete its response: "
+                    f"stop_reason={response.stop_reason}, "
+                    f"max_tokens={max_tokens}"
+                )
+
+            # Extract text, ignoring any thinking blocks
+            text = "".join(
+                block.text for block in response.content
+                if block.type == "text"
+            ).strip()
+
+            if not text:
+                raise RuntimeError("No text response received from Claude")
+
+            return text
             
         except Exception as e:
             logger.error(f"Claude API error: {str(e)}")

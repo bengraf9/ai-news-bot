@@ -53,7 +53,7 @@ jobs:
       - name: Generate and send weekly synthesis (Claude)
         env:
           LLM_PROVIDER: claude
-          LLM_MODEL: claude-haiku-5-5
+          LLM_MODEL: claude-sonnet-5-5
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NOTIFICATION_METHODS: email
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
